@@ -103,7 +103,7 @@ def iniciar_sesion(cuit_ingresar, password, row_index):
         try:
             error_message = driver.find_element(By.ID, 'F1:msg').text
             if error_message == "Clave o usuario incorrecto":
-                actualizar_excel(row_index, "Clave o usuario incorrecto")
+                actualizar_excel(row_index, "Clave incorrecta")
                 return False
         except:
             pass
@@ -114,6 +114,7 @@ def iniciar_sesion(cuit_ingresar, password, row_index):
         actualizar_excel(row_index, "Error al iniciar sesión")
         return False
 
+# Función para ingresar al módulo
 def ingresar_modulo(cuit_ingresar, password, row_index):
     """Ingresa al módulo específico del sistema de cuentas tributarias."""
     try:
@@ -146,7 +147,7 @@ def ingresar_modulo(cuit_ingresar, password, row_index):
 
         # Verificar mensaje de error de autenticación
         try:
-            error_message = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.TAG_NAME, 'pre')))
+            error_message = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, 'pre')))
             if error_message.text == "Ha ocurrido un error al autenticar, intente nuevamente.":
                 actualizar_excel(row_index, "Error autenticacion")
                 driver.refresh()
@@ -155,15 +156,15 @@ def ingresar_modulo(cuit_ingresar, password, row_index):
 
         # Verificar si es necesario iniciar sesion nuevamente
         try:
-            element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'F1:username')))
+            element = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, 'F1:username')))
             element.clear()
             human_typing(element, cuit_ingresar)
             driver.find_element(By.ID, 'F1:btnSiguiente').click()
             time.sleep(1)
 
-            element_pass = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'F1:password')))
+            element_pass = WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, 'F1:password')))
             human_typing(element_pass, password)
-            time.sleep(5)
+            time.sleep(1)
             driver.find_element(By.ID, 'F1:btnIngresar').click()
             time.sleep(1)
 
@@ -174,6 +175,7 @@ def ingresar_modulo(cuit_ingresar, password, row_index):
     except Exception as e:
         print(f"Error al ingresar al módulo: {e}")
 
+# Función para cambiar al cuit representado
 def seleccionar_cuit_representado(cuit_representado):
     """Selecciona el CUIT representado en el sistema."""
     try:
@@ -196,15 +198,15 @@ def seleccionar_cuit_representado(cuit_representado):
     # Esperar que el popup esté visible y hacer clic en el botón de cerrar por XPATH
     try:
     # Usamos el XPATH para localizar el botón de cerrar
-        close_button = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((By.XPATH, '//a[@href="#close" and @title="Cerrar"]'))
-        )
-        close_button.click()
+        xpath_popup = "/html/body/div[2]/div[2]/div/div/a"
+        element_popup = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, xpath_popup)))
+        element_popup.click()
         print("Popup cerrado exitosamente.")
     except Exception as e:
         print(f"Error al intentar cerrar el popup: {e}")
     return True
 
+# Función para cerrar sesión
 def cerrar_sesion():
     """Cierra la sesión actual."""
     try:
@@ -219,7 +221,7 @@ def cerrar_sesion():
 
 def verificar_deuda(contador):
     print("Verificando deuda")
-
+    ban = 0
     if contador != 1:
         # Abrir menú
         xpath_menú = "/html/body/div[2]/div[1]/table/tbody/tr/td[1]/a/i"
@@ -269,83 +271,97 @@ def verificar_deuda(contador):
         print("click en 351")
     except:
         actualizar_excel(indice, "No contiene 351")
+        ban = 1
 
-    # Obtener la fecha actual
-    fecha_actual = datetime.now()
+    # Contiene 351
+    if ban == 0:
+        # Obtener la fecha actual
+        fecha_actual = datetime.now()
 
-    # Calcular el mes y el año del periodo
-    mes_anterior = fecha_actual.month - 1
-    if mes_anterior == 0:  # Si estamos en enero, el mes anterior es diciembre del año anterior
-        mes_anterior = 12
-        anio_anterior = fecha_actual.year - 1
-    else:
-        anio_anterior = fecha_actual.year
+        # Calcular el mes y el año del periodo
+        mes_anterior = fecha_actual.month - 1
+        if mes_anterior == 0:  # Si estamos en enero, el mes anterior es diciembre del año anterior
+            mes_anterior = 12
+            anio_anterior = fecha_actual.year - 1
+        else:
+            anio_anterior = fecha_actual.year
 
-    # Formatear el periodo como "AAAAMM00"
-    periodo = f"{anio_anterior}{mes_anterior:02}00"
+        # Formatear el periodo como "AAAAMM00"
+        periodo = f"{anio_anterior}{mes_anterior:02}00"
 
-    # XPath del campo
-    campo_periodo_desde_xpath = "/html/body/div[3]/div[2]/div[2]/div[2]/div/form/div[2]/div[3]/div/span[2]/div/span/span[1]/div/div[2]/input"
-    campo_periodo_hasta_xpath = "/html/body/div[3]/div[2]/div[2]/div[2]/div/form/div[2]/div[3]/div/span[2]/div/span/span[2]/div/div[2]/input"
+        # XPath del campo
+        campo_periodo_desde_xpath = "/html/body/div[3]/div[2]/div[2]/div[2]/div/form/div[2]/div[3]/div/span[2]/div/span/span[1]/div/div[2]/input"
+        campo_periodo_hasta_xpath = "/html/body/div[3]/div[2]/div[2]/div[2]/div/form/div[2]/div[3]/div/span[2]/div/span/span[2]/div/div[2]/input"
 
-    time.sleep(2)
-    # Esperar a que el campo esté visible y escribir el periodo
-    campo_periodo_desde = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, campo_periodo_desde_xpath)))
-    campo_periodo_desde.clear()  # Limpiar el campo antes de escribir
-    campo_periodo_desde.click()
-    human_typing(campo_periodo_desde, periodo)
+        time.sleep(2)
 
-    time.sleep(1)
-    # Esperar a que el campo esté visible y escribir el periodo
-    campo_periodo_hasta = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, campo_periodo_hasta_xpath)))
-    campo_periodo_hasta.clear()  # Limpiar el campo antes de escribir
-    campo_periodo_hasta.click()
-    human_typing(campo_periodo_hasta, periodo)
+        # Esperar a que el campo esté visible y escribir el periodo
+        campo_periodo_desde = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, campo_periodo_desde_xpath)))
+        campo_periodo_desde.clear()  # Limpiar el campo antes de escribir
+        campo_periodo_desde.click()
+        human_typing(campo_periodo_desde, periodo)
 
-    print("periodos cargados")
+        time.sleep(1)
 
-    time.sleep(2)
+        # Esperar a que el campo esté visible y escribir el periodo
+        campo_periodo_hasta = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, campo_periodo_hasta_xpath)))
+        campo_periodo_hasta.clear()  # Limpiar el campo antes de escribir
+        campo_periodo_hasta.click()
+        human_typing(campo_periodo_hasta, periodo)
 
-    xpath_siguiente = "/html/body/div[3]/div[2]/div[2]/div[2]/div/form/div[2]/div[3]/div/span[6]/div/span/span/div"
-    # Esperar que el elemento esté clickeable
-    siguiente = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, xpath_siguiente)))
-    # Hacer clic en la opción
-    siguiente.click()
+        print("periodos cargados")
 
-    print("click siguiente")
+        time.sleep(2)
 
-    time.sleep(5)
+        xpath_siguiente = "/html/body/div[3]/div[2]/div[2]/div[2]/div/form/div[2]/div[3]/div/span[6]/div/span/span/div"
+        # Esperar que el elemento esté clickeable
+        siguiente = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, xpath_siguiente)))
+        # Hacer clic en la opción
+        siguiente.click()
 
-    xpath_deuda= "/html/body/div[3]/div[2]/div[2]/div[2]/div/form/div[2]/div[3]/div/span[2]/div/span/span[2]/div/span/span[2]/div/div"
-    # Esperar a que el elemento sea visible y obtener su texto
-    deuda_elemento = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, xpath_deuda)))
-    deuda_valor = deuda_elemento.text  # Extraer el texto contenido en el elemento
+        print("click siguiente")
 
-    # Mostrar o guardar el valor de la deuda
-    print("Valor de la deuda:", deuda_valor)
+        time.sleep(5)
 
-    # Entrar al módulo, realizar acciones e intentar obtener el valor de la deuda
-    try:        
-        # Si no es convertible a número, tratarlo como deuda inexistente
-        try:
-            deuda_valor_num = float(deuda_valor.replace(",", "").replace(".", "").replace(" ", ""))
-        except ValueError:
+        xpath_deuda= "/html/body/div[3]/div[2]/div[2]/div[2]/div/form/div[2]/div[3]/div/span[2]/div/span/span[2]/div/span/span[2]/div/div"
+        # Esperar a que el elemento sea visible y obtener su texto
+        deuda_elemento = WebDriverWait(driver, 60).until(EC.visibility_of_element_located((By.XPATH, xpath_deuda)))
+        deuda_valor = deuda_elemento.text  # Extraer el texto contenido en el elemento
+        deuda_valor_original = deuda_valor
+
+        # Mostrar o guardar el valor de la deuda
+        print("Valor de la deuda:", deuda_valor)
+
+        # Entrar al módulo, realizar acciones e intentar obtener el valor de la deuda
+        try:        
+            # Normalizar el formato de la deuda (eliminar símbolo de moneda y manejar separadores)
+            deuda_valor = deuda_valor.replace("$", "").replace(" ", "")  # Eliminar el símbolo de moneda y espacios
+            deuda_valor = deuda_valor.replace(".", "").replace(",", ".")  # Convertir separadores de miles y decimales
+
+            # Intentar convertir a número
+            try:
+                deuda_valor_num = float(deuda_valor)
+            except ValueError:
+                deuda_valor_num = 0.0  # Si falla la conversión, tratar como deuda inexistente
+            
+            # Determinar si hay deuda
+            tiene_deuda = "Sí" if deuda_valor_num > 0 else "No"
+
+        except Exception as e:
+            # Si hay algún error, registrar como deuda no disponible
             deuda_valor_num = 0.0
-        
-        # Determinar si hay deuda
-        tiene_deuda = "Sí" if deuda_valor_num > 0 else "No"
-    
-    except Exception as e:
-        # Si hay algún error, registrar como deuda no disponible
-        deuda_valor_num = 0.0
-        tiene_deuda = "No"
-        print(f"Error obteniendo deuda para {cliente}: {e}")
+            tiene_deuda = "No"
+            print(f"Error obteniendo deuda: {e}")
+    # No contiene 351
+    else:
+        tiene_deuda = "No contiene 351"
+        deuda_valor_original = 0
 
     # Agregar los datos del cliente al registro
     datos_clientes.append({
         "Cliente": cliente,
         "Tiene Deuda": tiene_deuda,
-        "Importe Deuda": deuda_valor_num
+        "Importe Deuda": deuda_valor_original
     })
 
 def extraer_datos_nuevo(cuit_ingresar, cuit_representado, password, posterior, cliente, indice, contador):
@@ -356,32 +372,19 @@ def extraer_datos_nuevo(cuit_ingresar, cuit_representado, password, posterior, c
             ingresar_modulo(cuit_ingresar, password, indice)
             # Esperar que el popup esté visible y hacer clic en el botón de cerrar por XPATH
             try:
-                # Usamos el XPATH para localizar el botón de cerrar
-                close_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '//a[@href="#close" and @title="Cerrar"]'))
-                )
-                close_button.click()
+                xpath_popup = "/html/body/div[2]/div[2]/div/div/a"
+                element_popup = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, xpath_popup)))
+                element_popup.click()
                 print("Popup cerrado exitosamente.")
             except Exception as e:
                 print(f"Error al intentar cerrar el popup: {e}")
             if seleccionar_cuit_representado(cuit_representado):
                 print("Verificar deuda")
                 verificar_deuda(contador)
-                if posterior == 0:
-                    print("Cerrando sesión")
-                    cerrar_sesion()
-    except Exception as e:
-        print(f"Error al extraer datos para el nuevo usuario: {e}")
-
-def extraer_datos(cuit_representado, posterior, cliente, contador):
-    """Extrae datos para un usuario existente."""
-    try:
-        if seleccionar_cuit_representado(cuit_representado):
-            verificar_deuda(contador)
-            if posterior == 0:
+                print("Cerrando sesión")
                 cerrar_sesion()
     except Exception as e:
-        print(f"Error al extraer datos: {e}")
+        print(f"Error al extraer datos para el nuevo usuario: {e}")
 
 # Función para convertir Excel a CSV utilizando xlwings
 def excel_a_csv(input_folder, output_folder):
@@ -430,10 +433,7 @@ for cuit_ingresar, cuit_representado, password, posterior, anterior, cliente in 
     cuit_ingresar_normalizado = normalizar_cuit(cuit_ingresar)
     cuit_representado_normalizado = normalizar_cuit(cuit_representado)
 
-    if anterior == 0:
-        extraer_datos_nuevo(cuit_ingresar_normalizado, cuit_representado_normalizado, password, posterior, cliente, indice, contador)
-    else:
-        extraer_datos(cuit_representado_normalizado, posterior, cliente, contador)
+    extraer_datos_nuevo(cuit_ingresar_normalizado, cuit_representado_normalizado, password, posterior, cliente, indice, contador)
     
     indice += 1
     contador += 1
